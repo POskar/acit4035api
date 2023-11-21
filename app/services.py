@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
 from . import models, database, schemas
+from datetime import datetime, timezone, time
 
 
 def create_database():
@@ -12,7 +13,7 @@ def get_db():
     finally:
         db.close()
 
-
+# Medical Personel
 def get_medicalpersonel(db: Session, medicalpersonel_id: int):
     return db.query(models.MedicalPersonel).filter(models.MedicalPersonel.id == medicalpersonel_id).first()
 
@@ -52,7 +53,7 @@ def update_medicalpersonel(db: Session, medicalpersonel_id: int, medicalpersonel
     db.refresh(db_medicalpersonel)
     return db_medicalpersonel
 
-
+# Patient
 def get_patient(db: Session, patient_id: int):
     return db.query(models.Patient).filter(models.Patient.id == patient_id).first()
 
@@ -91,7 +92,7 @@ def update_patient(db: Session, patient_id: int, patient: schemas.PatientCreate)
     db.refresh(db_patient)
     return db_patient
 
-
+# Device
 def get_device(db: Session, device_id: int):
     return db.query(models.Device).filter(models.Device.id == device_id).first()
 
@@ -117,7 +118,7 @@ def update_device(db: Session, device_id: int, device: schemas.DeviceCreate):
     db.refresh(db_device)
     return db_device
 
-
+# ActivityFrame
 def get_activityframe(db: Session, activityframe_id: int):
     return db.query(models.ActivityFrame).filter(models.ActivityFrame.id == activityframe_id).first()
 
@@ -127,8 +128,8 @@ def get_activityframes(db: Session, skip: int = 0, limit: int = 100):
 def create_activityframe(db: Session, activityframe: schemas.ActivityFrameCreate):
     db_activityframe = models.ActivityFrame(
         activity_id = activityframe.activity_id,
-        time_started = activityframe.time_started,
-        time_finished = activityframe.time_finished,
+        date_started = activityframe.date_started,
+        date_finished = activityframe.date_finished,
         patient_id = activityframe.patient_id
     )
     db.add(db_activityframe)
@@ -149,7 +150,7 @@ def update_activityframe(db: Session, activityframe_id: int, activityframe: sche
     db.refresh(db_activityframe)
     return db_activityframe
 
-
+# ActivityTarget
 def get_activitytarget(db: Session, activitytarget_id: int):
     return db.query(models.ActivityTarget).filter(models.ActivityTarget.id == activitytarget_id).first()
 
@@ -181,7 +182,7 @@ def update_activitytarget(db: Session, activitytarget_id: int, activitytarget: s
     db.refresh(db_activitytarget)
     return db_activitytarget
 
-
+# ActivityType
 def get_activitytype(db: Session, activitytype_id: int):
     return db.query(models.ActivityType).filter(models.ActivityType.id == activitytype_id).first()
 
@@ -206,3 +207,11 @@ def update_activitytype(db: Session, activitytype_id: int, activitytype: schemas
     db.commit()
     db.refresh(db_activitytype)
     return db_activitytype
+
+# Custom services for endpoints
+def get_activityframes_for_patient_and_date(db: Session, patient_id: int, start_datetime: datetime, end_datetime: datetime):
+    return db.query(models.ActivityFrame).filter(
+        models.ActivityFrame.patient_id == patient_id,
+        models.ActivityFrame.date_started >= start_datetime,
+        models.ActivityFrame.date_finished <= end_datetime
+    ).all()

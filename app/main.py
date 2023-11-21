@@ -1,7 +1,8 @@
-import datetime
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import Path, Query, FastAPI, Depends, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from typing import List
+from datetime import datetime, time, timedelta, timezone
 
 import uvicorn
 import app.schemas as _schemas
@@ -9,28 +10,60 @@ import app.services as _services
 
 app = FastAPI()
 
+# CORS Configuration
+origins = ["*"]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 _services.create_database()
 
 # Endpoints for testing
 @app.post("/multiple_activityframes/", tags=["Active Testing"], response_model=List[_schemas.ActivityFrame])
 def create_multiple_activityframes(requestData: _schemas.ActivityFrameRequest, db: Session = Depends(_services.get_db)):
     created_activityframes = []
-    values = requestData.dataFromDevice.split(";")
-    groupedValues = [values[i:i+3] for i in range(0, len(values), 3)
-                     if len(values[i:i+3]) == 3]
 
+    deviceEnabledTime = requestData.currentTime - timedelta(milliseconds=requestData.deviceTime)
+
+    # Split the data from the device, and group the values into sets of (activity_id, time_started, time_finished)
+    values = requestData.dataFromDevice.split(";")
+    groupedValues = [values[i:i+3] for i in range(0, len(values), 3) if len(values[i:i+3]) == 3]
+
+    # Iterate through each group of values
     for group in groupedValues:
+        # Calculate time_started and time_finished based on device_enabled_time and values in group[1] and group[2]
+        dateStarted = deviceEnabledTime + timedelta(milliseconds=int(group[1]))
+        dateFinished = deviceEnabledTime + timedelta(milliseconds=int(group[2]))
+
+        # Create a dictionary with data for a single activity frame
         activityFrameData = {
             "patient_id": requestData.patientId,
             "activity_id": group[0],
-            "time_started": group[1],
-            "time_finished": group[2]
+            "date_started": dateStarted,
+            "date_finished": dateFinished
         }
+
+        # Create an ActivityFrameCreate instance from the dictionary
         activityframe = _schemas.ActivityFrameCreate(**activityFrameData)
+
+        # Call the service function to create the activity frame in the database
         created_frame = _services.create_activityframe(db=db, activityframe=activityframe)
         created_activityframes.append(created_frame)
 
     return created_activityframes
+
+@app.get("/activityframes/{patient_id}/date/{activity_date}", tags=["Active Testing"], response_model=List[_schemas.ActivityFrame])
+def get_activityframes_for_date(patient_id: int, activity_date: datetime, db: Session = Depends(_services.get_db)):
+    # Assuming you store both `date_started` and `date_finished` in UTC
+    start_datetime = datetime.combine(activity_date, time.min).replace(tzinfo=timezone.utc)
+    end_datetime = datetime.combine(activity_date, time.max).replace(tzinfo=timezone.utc)
+
+    activityframes = _services.get_activityframes_for_patient_and_date(db=db, patient_id=patient_id, start_datetime=start_datetime, end_datetime=end_datetime)
+    return activityframes
 
 # Endpoints for MedicalPersonel
 @app.post("/medicalpersonel/", tags=["Medical Personel"], response_model=_schemas.MedicalPersonel)

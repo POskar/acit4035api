@@ -50,8 +50,8 @@ class ActivityFrame(_database.Base):
     id = _sql.Column(_sql.Integer, primary_key=True)
     patient_id = _sql.Column(_sql.Integer, _sql.ForeignKey("patients.id"))
     activity_id = _sql.Column(_sql.Integer, _sql.ForeignKey("activitytypes.id"))
-    time_started = _sql.Column(_sql.BigInteger)
-    time_finished = _sql.Column(_sql.BigInteger)
+    date_started = _sql.Column(_sql.DateTime, default=_dt.datetime.utcnow)
+    date_finished = _sql.Column(_sql.DateTime, default=_dt.datetime.utcnow)
 
     patient = _orm.relationship("Patient", back_populates="activityFrames")
     activity_type = _orm.relationship("ActivityType", back_populates="frame")

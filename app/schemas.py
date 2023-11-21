@@ -2,6 +2,7 @@ from pydantic import BaseModel
 from typing import List
 from datetime import datetime
 
+# Medical Personel
 class _MedicalPersonelBase(BaseModel):
     first_name: str
     last_name: str
@@ -18,7 +19,7 @@ class MedicalPersonel(_MedicalPersonelBase):
     class Config:
         orm_mode = True
 
-
+# Patient
 class _PatientBase(BaseModel):
     first_name: str
     last_name: str
@@ -36,7 +37,7 @@ class Patient(_PatientBase):
     class Config:
         orm_mode = True
 
-
+# Device
 class _DeviceBase(BaseModel):
     mac_address: str
 
@@ -51,12 +52,12 @@ class Device(_DeviceBase):
     class Config:
         orm_mode = True
 
-
+# ActivityFrame
 class _ActivityFrameBase(BaseModel):
     patient_id: int
     activity_id: int
-    time_started: int
-    time_finished: int
+    date_started: datetime
+    date_finished: datetime
 
 class ActivityFrameCreate(_ActivityFrameBase):
     pass
@@ -68,7 +69,7 @@ class ActivityFrame(_ActivityFrameBase):
         orm_mode = True
 
 
-
+# ActivityTarget
 class _ActivityTargetBase(BaseModel):
     patient_id: int
     activity_id: int
@@ -85,7 +86,7 @@ class ActivityTarget(_ActivityTargetBase):
         orm_mode = True
 
 
-
+# ActivityType
 class _ActivityTypeBase(BaseModel):
     type: str
 
@@ -98,7 +99,7 @@ class ActivityType(_ActivityTypeBase):
     class Config:
         orm_mode = True
 
-
+# Custom schemas for endpoints
 class ActivityFrameRequest(BaseModel):
     currentTime: datetime
     deviceTime: int
