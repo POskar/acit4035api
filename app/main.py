@@ -35,7 +35,7 @@ def create_multiple_activityframes(requestData: _schemas.ActivityFrameRequest, d
     # Clean the data by removing anything that isn't a number or ;
     cleaned_values = [value for value in values if value.isdigit() or value == ";"]
 
-     # Group the cleaned values
+    # Group the cleaned values
     grouped_values = [cleaned_values[i:i + 3] for i in range(0, len(cleaned_values), 3) if len(cleaned_values[i:i + 3]) == 3]
 
     # Filter out groups that don't start with a single digit
@@ -44,15 +44,20 @@ def create_multiple_activityframes(requestData: _schemas.ActivityFrameRequest, d
     # Iterate through each group of values
     for group in grouped_values:
         # Calculate time_started and time_finished based on device_enabled_time and values in group[1] and group[2]
-        date_started  = deviceEnabledTime + timedelta(milliseconds=int(group[1]))
-        date_finished  = deviceEnabledTime + timedelta(milliseconds=int(group[2]))
+        date_started = deviceEnabledTime + timedelta(milliseconds=int(group[1]))
+        date_finished = deviceEnabledTime + timedelta(milliseconds=int(group[2]))
+
+        # Check if date_started is greater than date_finished
+        if date_started > date_finished:
+            # Skip this record and move to the next one
+            continue
 
         # Create a dictionary with data for a single activity frame
         activityFrameData = {
             "patient_id": requestData.patientId,
             "activity_id": group[0],
-            "date_started": date_started ,
-            "date_finished": date_finished 
+            "date_started": date_started,
+            "date_finished": date_finished
         }
 
         # Create an ActivityFrameCreate instance from the dictionary
