@@ -1,5 +1,6 @@
 import datetime
 from fastapi import FastAPI, Depends, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from typing import List
 
@@ -8,6 +9,17 @@ import app.schemas as _schemas
 import app.services as _services
 
 app = FastAPI()
+
+# CORS Configuration
+origins = ["*"]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 _services.create_database()
 
