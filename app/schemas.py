@@ -105,3 +105,11 @@ class ActivityFrameRequest(BaseModel):
     deviceTime: int
     dataFromDevice: str
     patientId: int
+
+class Summary(BaseModel):
+    timeOnRandom: int
+    timeOnClapping: int
+    timeOnBrushingTeeth: int
+    timeOnWashingHands: int
+    timeOnCombingHair: int
+    patientId: int

@@ -31,20 +31,28 @@ def create_multiple_activityframes(requestData: _schemas.ActivityFrameRequest, d
 
     # Split the data from the device, and group the values into sets of (activity_id, time_started, time_finished)
     values = requestData.dataFromDevice.split(";")
-    groupedValues = [values[i:i+3] for i in range(0, len(values), 3) if len(values[i:i+3]) == 3]
+
+    # Clean the data by removing anything that isn't a number or ;
+    cleaned_values = [value for value in values if value.isdigit() or value == ";"]
+
+     # Group the cleaned values
+    grouped_values = [cleaned_values[i:i + 3] for i in range(0, len(cleaned_values), 3) if len(cleaned_values[i:i + 3]) == 3]
+
+    # Filter out groups that don't start with a single digit
+    grouped_values = [group for group in grouped_values if group[0].isdigit() and len(group[0]) == 1]
 
     # Iterate through each group of values
-    for group in groupedValues:
+    for group in grouped_values:
         # Calculate time_started and time_finished based on device_enabled_time and values in group[1] and group[2]
-        dateStarted = deviceEnabledTime + timedelta(milliseconds=int(group[1]))
-        dateFinished = deviceEnabledTime + timedelta(milliseconds=int(group[2]))
+        date_started  = deviceEnabledTime + timedelta(milliseconds=int(group[1]))
+        date_finished  = deviceEnabledTime + timedelta(milliseconds=int(group[2]))
 
         # Create a dictionary with data for a single activity frame
         activityFrameData = {
             "patient_id": requestData.patientId,
             "activity_id": group[0],
-            "date_started": dateStarted,
-            "date_finished": dateFinished
+            "date_started": date_started ,
+            "date_finished": date_finished 
         }
 
         # Create an ActivityFrameCreate instance from the dictionary
@@ -64,6 +72,93 @@ def get_activityframes_for_date(patient_id: int, activity_date: datetime, db: Se
 
     activityframes = _services.get_activityframes_for_patient_and_date(db=db, patient_id=patient_id, start_datetime=start_datetime, end_datetime=end_datetime)
     return activityframes
+
+@app.get("/daily-summary/{patient_id}/date/{activity_date}", tags=["Active Testing"], response_model=_schemas.Summary)
+def get_daily_summary(patient_id: int, activity_date: datetime, db: Session = Depends(_services.get_db)):
+    # Get all activity frames for the specified patient and date
+    start_datetime = datetime.combine(activity_date, time.min).replace(tzinfo=timezone.utc)
+    end_datetime = datetime.combine(activity_date, time.max).replace(tzinfo=timezone.utc)
+    activityframes = _services.get_activityframes_for_patient_and_date(db=db, patient_id=patient_id, start_datetime=start_datetime, end_datetime=end_datetime)
+
+    # Initialize variables to store the duration of each activity
+    time_on_random = 0
+    time_on_clapping = 0
+    time_on_brushing_teeth = 0
+    time_on_washing_hands = 0
+    time_on_combing_hair = 0
+
+    # Iterate through each activity frame and calculate the duration for each activity
+    for activityframe in activityframes:
+        activity_id = activityframe.activity_id
+        duration = (activityframe.date_finished - activityframe.date_started).total_seconds()
+
+        if activity_id == 0:
+            time_on_random += duration
+        elif activity_id == 1:
+            time_on_clapping += duration
+        elif activity_id == 2:
+            time_on_brushing_teeth += duration
+        elif activity_id == 3:
+            time_on_washing_hands += duration
+        elif activity_id == 4:
+            time_on_combing_hair += duration
+
+    # Create and return the DailySummary instance
+    daily_summary = _schemas.Summary(
+        timeOnRandom=int(time_on_random),
+        timeOnClapping=int(time_on_clapping),
+        timeOnBrushingTeeth=int(time_on_brushing_teeth),
+        timeOnWashingHands=int(time_on_washing_hands),
+        timeOnCombingHair=int(time_on_combing_hair),
+        patientId=patient_id
+    )
+
+    return daily_summary
+
+@app.get("/monthly-summary/{patient_id}/month/{activity_month}", tags=["Active Testing"], response_model=_schemas.Summary)
+def get_monthly_summary(patient_id: int, activity_month: datetime, db: Session = Depends(_services.get_db)):
+    # Calculate the start_date (first day of the month) and end_date (last day of the month)
+    start_date = datetime.combine(activity_month.replace(day=1), time.min).replace(tzinfo=timezone.utc)
+    next_month = (activity_month.replace(day=28) + timedelta(days=4)).replace(day=1)
+    end_date = (next_month - timedelta(days=1)).replace(hour=23, minute=59, second=59).replace(tzinfo=timezone.utc)
+
+    # Get all activity frames for the specified patient and date range
+    activityframes = _services.get_activityframes_for_patient_and_date(db=db, patient_id=patient_id, start_datetime=start_date, end_datetime=end_date)
+
+    # Initialize variables to store the duration of each activity
+    time_on_random = 0
+    time_on_clapping = 0
+    time_on_brushing_teeth = 0
+    time_on_washing_hands = 0
+    time_on_combing_hair = 0
+
+    # Iterate through each activity frame and calculate the duration for each activity
+    for activityframe in activityframes:
+        activity_id = activityframe.activity_id
+        duration = (activityframe.date_finished - activityframe.date_started).total_seconds()
+
+        if activity_id == 0:
+            time_on_random += duration
+        elif activity_id == 1:
+            time_on_clapping += duration
+        elif activity_id == 2:
+            time_on_brushing_teeth += duration
+        elif activity_id == 3:
+            time_on_washing_hands += duration
+        elif activity_id == 4:
+            time_on_combing_hair += duration
+
+    # Create and return the MonthlySummary instance
+    monthly_summary = _schemas.Summary(
+        timeOnRandom=int(time_on_random),
+        timeOnClapping=int(time_on_clapping),
+        timeOnBrushingTeeth=int(time_on_brushing_teeth),
+        timeOnWashingHands=int(time_on_washing_hands),
+        timeOnCombingHair=int(time_on_combing_hair),
+        patientId=patient_id
+    )
+
+    return monthly_summary
 
 # Endpoints for MedicalPersonel
 @app.post("/medicalpersonel/", tags=["Medical Personel"], response_model=_schemas.MedicalPersonel)
