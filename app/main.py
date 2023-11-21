@@ -73,7 +73,7 @@ def get_activityframes_for_date(patient_id: int, activity_date: datetime, db: Se
     activityframes = _services.get_activityframes_for_patient_and_date(db=db, patient_id=patient_id, start_datetime=start_datetime, end_datetime=end_datetime)
     return activityframes
 
-@app.get("/daily-summary/{patient_id}/date/{activity_date}", tags=["Active Testing"], response_model=_schemas.Summary)
+@app.get("/daily-summary/{patient_id}/date/{activity_date}", tags=["Active Testing"], response_model=_schemas.DailySummary)
 def get_daily_summary(patient_id: int, activity_date: datetime, db: Session = Depends(_services.get_db)):
     # Get all activity frames for the specified patient and date
     start_datetime = datetime.combine(activity_date, time.min).replace(tzinfo=timezone.utc)
@@ -103,19 +103,38 @@ def get_daily_summary(patient_id: int, activity_date: datetime, db: Session = De
         elif activity_id == 4:
             time_on_combing_hair += duration
 
-    # Create and return the DailySummary instance
-    daily_summary = _schemas.Summary(
-        timeOnRandom=int(time_on_random),
-        timeOnClapping=int(time_on_clapping),
-        timeOnBrushingTeeth=int(time_on_brushing_teeth),
-        timeOnWashingHands=int(time_on_washing_hands),
-        timeOnCombingHair=int(time_on_combing_hair),
-        patientId=patient_id
+    # Create and return the Summary instance
+    summary = _schemas.DailySummary(
+        date=activity_date.strftime("%Y-%m-%d"),
+        motion=_schemas.ActivityDuration(
+            activityDurationInSeconds=int(time_on_clapping) + int(time_on_brushing_teeth) + int(time_on_combing_hair) + int(time_on_washing_hands) + int(time_on_random),
+            activityTargetInSeconds=None
+        ),
+        clapping=_schemas.ActivityDuration(
+            activityDurationInSeconds=int(time_on_clapping),
+            activityTargetInSeconds=None
+        ),
+        brushingTeeth=_schemas.ActivityDuration(
+            activityDurationInSeconds=int(time_on_brushing_teeth),
+            activityTargetInSeconds=None
+        ),
+        brushingHair=_schemas.ActivityDuration(
+            activityDurationInSeconds=int(time_on_combing_hair),
+            activityTargetInSeconds=None
+        ),
+        cleaningHands=_schemas.ActivityDuration(
+            activityDurationInSeconds=int(time_on_washing_hands),
+            activityTargetInSeconds=None
+        ),
+        randomMotion=_schemas.ActivityDuration(
+            activityDurationInSeconds=int(time_on_random),
+            activityTargetInSeconds=None
+        ),
     )
 
-    return daily_summary
+    return summary
 
-@app.get("/monthly-summary/{patient_id}/month/{activity_month}", tags=["Active Testing"], response_model=_schemas.Summary)
+@app.get("/monthly-summary/{patient_id}/month/{activity_month}", tags=["Active Testing"], response_model=_schemas.MonthlySummary)
 def get_monthly_summary(patient_id: int, activity_month: datetime, db: Session = Depends(_services.get_db)):
     # Calculate the start_date (first day of the month) and end_date (last day of the month)
     start_date = datetime.combine(activity_month.replace(day=1), time.min).replace(tzinfo=timezone.utc)
@@ -125,40 +144,75 @@ def get_monthly_summary(patient_id: int, activity_month: datetime, db: Session =
     # Get all activity frames for the specified patient and date range
     activityframes = _services.get_activityframes_for_patient_and_date(db=db, patient_id=patient_id, start_datetime=start_date, end_datetime=end_date)
 
-    # Initialize variables to store the duration of each activity
-    time_on_random = 0
-    time_on_clapping = 0
-    time_on_brushing_teeth = 0
-    time_on_washing_hands = 0
-    time_on_combing_hair = 0
+    # Initialize a list to store daily summaries
+    monthly_summaries = []
 
-    # Iterate through each activity frame and calculate the duration for each activity
-    for activityframe in activityframes:
-        activity_id = activityframe.activity_id
-        duration = (activityframe.date_finished - activityframe.date_started).total_seconds()
+    # Iterate through each day in the month and create a daily summary
+    current_date = start_date
+    while current_date <= end_date:
+        # Initialize variables to store the duration of each activity for the current day
+        time_on_random = 0
+        time_on_clapping = 0
+        time_on_brushing_teeth = 0
+        time_on_washing_hands = 0
+        time_on_combing_hair = 0
 
-        if activity_id == 0:
-            time_on_random += duration
-        elif activity_id == 1:
-            time_on_clapping += duration
-        elif activity_id == 2:
-            time_on_brushing_teeth += duration
-        elif activity_id == 3:
-            time_on_washing_hands += duration
-        elif activity_id == 4:
-            time_on_combing_hair += duration
+        # Iterate through each activity frame for the current day and calculate the duration for each activity
+        for activityframe in activityframes:
+            if current_date.date() == activityframe.date_started.date():
+                activity_id = activityframe.activity_id
+                duration = (activityframe.date_finished - activityframe.date_started).total_seconds()
+
+                if activity_id == 0:
+                    time_on_random += duration
+                elif activity_id == 1:
+                    time_on_clapping += duration
+                elif activity_id == 2:
+                    time_on_brushing_teeth += duration
+                elif activity_id == 3:
+                    time_on_washing_hands += duration
+                elif activity_id == 4:
+                    time_on_combing_hair += duration
+
+        # Create and append the daily summary
+        daily_summary = _schemas.DailySummary(
+            date=current_date.strftime("%Y-%m-%d"),
+            motion=_schemas.ActivityDuration(
+                activityDurationInSeconds=int(time_on_clapping) + int(time_on_brushing_teeth) + int(
+                    time_on_combing_hair) + int(time_on_washing_hands) + int(time_on_random),
+                activityTargetInSeconds=None
+            ),
+            clapping=_schemas.ActivityDuration(
+                activityDurationInSeconds=int(time_on_clapping),
+                activityTargetInSeconds=None
+            ),
+            brushingTeeth=_schemas.ActivityDuration(
+                activityDurationInSeconds=int(time_on_brushing_teeth),
+                activityTargetInSeconds=None
+            ),
+            brushingHair=_schemas.ActivityDuration(
+                activityDurationInSeconds=int(time_on_combing_hair),
+                activityTargetInSeconds=None
+            ),
+            cleaningHands=_schemas.ActivityDuration(
+                activityDurationInSeconds=int(time_on_washing_hands),
+                activityTargetInSeconds=None
+            ),
+            randomMotion=_schemas.ActivityDuration(
+                activityDurationInSeconds=int(time_on_random),
+                activityTargetInSeconds=None
+            ),
+        )
+        monthly_summaries.append(daily_summary)
+
+        # Move to the next day
+        current_date += timedelta(days=1)
 
     # Create and return the MonthlySummary instance
-    monthly_summary = _schemas.Summary(
-        timeOnRandom=int(time_on_random),
-        timeOnClapping=int(time_on_clapping),
-        timeOnBrushingTeeth=int(time_on_brushing_teeth),
-        timeOnWashingHands=int(time_on_washing_hands),
-        timeOnCombingHair=int(time_on_combing_hair),
-        patientId=patient_id
-    )
+    monthly_summary = _schemas.MonthlySummary(monthlySummaries=monthly_summaries)
 
     return monthly_summary
+
 
 # Endpoints for MedicalPersonel
 @app.post("/medicalpersonel/", tags=["Medical Personel"], response_model=_schemas.MedicalPersonel)

@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 from datetime import datetime
 
 # Medical Personel
@@ -106,10 +106,18 @@ class ActivityFrameRequest(BaseModel):
     dataFromDevice: str
     patientId: int
 
-class Summary(BaseModel):
-    timeOnRandom: int
-    timeOnClapping: int
-    timeOnBrushingTeeth: int
-    timeOnWashingHands: int
-    timeOnCombingHair: int
-    patientId: int
+class ActivityDuration(BaseModel):
+    activityDurationInSeconds: int
+    activityTargetInSeconds: Optional[int]
+
+class DailySummary(BaseModel):
+    date: str
+    motion: ActivityDuration
+    clapping: ActivityDuration
+    brushingTeeth: ActivityDuration
+    brushingHair: ActivityDuration
+    cleaningHands: ActivityDuration
+    randomMotion: ActivityDuration
+
+class MonthlySummary(BaseModel):
+    monthlySummaries: List[DailySummary]
