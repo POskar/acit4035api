@@ -113,12 +113,11 @@ def get_daily_summary(patient_id: int, activity_date: datetime, db: Session = De
         date=activity_date.strftime("%Y-%m-%d"),
         motion=_schemas.ActivityDuration(
             activityDurationInSeconds=int(time_on_clapping) + int(time_on_brushing_teeth) + int(time_on_combing_hair) + int(time_on_washing_hands) + int(time_on_random),
-            #  TODO: change 600
-            activityTargetInSeconds=600
+            activityTargetInSeconds=75*60
         ),
         clapping=_schemas.ActivityDuration(
             activityDurationInSeconds=int(time_on_clapping),
-            activityTargetInSeconds=None
+            activityTargetInSeconds=15*60
         ),
         brushingTeeth=_schemas.ActivityDuration(
             activityDurationInSeconds=int(time_on_brushing_teeth),
